@@ -24,7 +24,9 @@ void *eval_func(void* rank) {
 	int ID = *((int *) rank);
 	float start;// = ((long) ID) * (start_x * 
 	float end;// = 
-	local_min = FLT_MAX; 
+	local_min = FLT_MAX;
+	// Generate a random floating point number in the subdivided range.
+
 }
 
 double myclock() {
@@ -41,8 +43,9 @@ int main(int argc, char *argv[]) {
 	int rank;
 	double tstart, ttotal;
 	nprocs = 2; //atoi(getenv("NSLOTS"));
+
 	// Data validation
-	if (argc < 3) {
+	if (argc != 3) {
 		std::cout << "Please enter the start and end points." << std::endl;
 		return -1;
 	}
@@ -53,7 +56,7 @@ int main(int argc, char *argv[]) {
 		std::cout << "Error with MPI." << std::endl;
 		MPI_Abort(MPI_COMM_WORLD, rc);
 	}
-	MPI_Comm_size(MPI_COMM_WORLD, &nthreads);
+	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 		
 	if (rank == 0) {
@@ -69,6 +72,7 @@ int main(int argc, char *argv[]) {
 	// Broadcast the starting and ending points to processes
 	MPI_Bcast(&start_x, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	MPI_Bcast(&end_x, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
+	
 	// Evaulate the function to find minimum values
 	eval_func(&rank);
 
