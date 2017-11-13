@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 		std::cout << "Please enter the start and end points." << std::endl;
 		return -1;
 	}
-
+	
 	// Initialize the MPI process
 	int rc = MPI_Init(&argc, &argv);
 	if (rc != MPI_SUCCESS) {
