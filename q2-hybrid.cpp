@@ -6,6 +6,7 @@
 #include <float.h>
 #include <cmath>
 #include <mpi.h>
+#include <omp.h>
 
 // Number of iterations in Monte Carlo
 #define NUM_ITER 1000000
@@ -35,9 +36,13 @@ void *eval_func(void* rank) {
 	local_min = FLT_MAX;
 	float f_min = FLT_MAX;
 	float random;
+	int x;
 
+	omp_set_dynamic(0);
+	omp_set_num_threads(nthreads);
+	#pragma omp parallel for private(x)
 	// Generate a random floating point number in the subdivided range.
-	for (int x = 0; x < NUM_ITER; x++) {
+	for (x = 0; x < NUM_ITER; x++) {
 		random = (rand() * (end - start) / RAND_MAX) + start;
 		float min = f(random);
 		if (min < f_min) {
@@ -64,7 +69,7 @@ int main(int argc, char *argv[]) {
 	nprocs = 2; //atoi(getenv("NSLOTS"));
 
 	// Data validation
-	if (argc != 3) {
+	if (argc < 3) {
 		std::cout << "Please enter the start and end points." << std::endl;
 		return -1;
 	}
@@ -87,6 +92,8 @@ int main(int argc, char *argv[]) {
 		tstart = myclock(); tstart = myclock();
 	}
 
+	// Grab the number of threads per process from the command line.
+	nthreads = atoi(argv[3]);
 
 	// Broadcast the starting and ending points to processes
 	MPI_Bcast(&start_x, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
@@ -118,7 +125,8 @@ int main(int argc, char *argv[]) {
 	else {
 		MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);	
 	}
-	// Free memory
+
+	// Free memory and clean up
 	if (rank == 0) delete[] minimum;
 	MPI_Finalize();
 	return 0;
