@@ -22,14 +22,14 @@ void *eval_func(void*);
 double myclock(void);
 float f(float);
 
-// Function to minimize
+// Function to minimize via Monte Carlo.
 float f(float x) {
 	return cos(x) + (pow(fabs(7.0 - x), 2.0/15.0)) + 2*(pow(fabs(5.0 - x), 4.0/35.0));
 }
 
-// Evaluate the function at points using Monte Carlo analysis
+// Evaluate the function at points using Monte Carlo analysis.
 void *eval_func(void* rank) {
-	// Segment the range based on rank
+	// Segment the range based on rank.
 	int ID = *((int *) rank);
 	float start = ((long) ID) * (end_x + start_x) / nprocs; 
 	float end = start + (end_x + start_x) / nprocs; 
@@ -50,9 +50,13 @@ void *eval_func(void* rank) {
 			local_min = random;
 		}
 	}
-	MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+
+	// Send the value that minimizes the function back to the main process.
+	if (rank != 0) MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+	else minimum[0] = local_min;
 }
 
+// Used to compute the amount of time the program takes to run.
 double myclock() {
    static time_t t_start = 0;  // Save and subtract off each time
 
@@ -68,13 +72,13 @@ int main(int argc, char *argv[]) {
 	double tstart, ttotal;
 	nprocs = 2; //atoi(getenv("NSLOTS"));
 
-	// Data validation
+	// Data validation.
 	if (argc < 3) {
 		std::cout << "Please enter the start and end points." << std::endl;
 		return -1;
 	}
 	
-	// Initialize the MPI process
+	// Initialize the MPI processes.
 	int rc = MPI_Init(&argc, &argv);
 	if (rc != MPI_SUCCESS) {
 		std::cout << "Error with MPI." << std::endl;
@@ -85,7 +89,7 @@ int main(int argc, char *argv[]) {
 		
 	if (rank == 0) {
 		minimum = new float[nprocs];
-		// Grab the starting and ending values of x	
+		// Grab the starting and ending values of x.
 		start_x = atof(argv[1]);
 		end_x = atof(argv[2]);
 		std::cout << "start, end: " << start_x << ", " << end_x << std::endl;
@@ -95,25 +99,25 @@ int main(int argc, char *argv[]) {
 	// Grab the number of threads per process from the command line.
 	nthreads = atoi(argv[3]);
 
-	// Broadcast the starting and ending points to processes
+	// Broadcast the starting and ending points to processes.
 	MPI_Bcast(&start_x, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	MPI_Bcast(&end_x, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	
-	// Evaulate the function to find minimum values
+	// Evaulate the function to find minimum values.
 	eval_func(&rank);
 
 	if (rank == 0) {
 		float min = 0;
 		MPI_Status stat;
-		// Pass back the values to prevent idle processes 
-		for (int i = 0; i < nprocs; i++) {
+		// Pass back the values to prevent idle processes. 
+		for (int i = 1; i < nprocs; i++) {
 			MPI_Recv(&min, 1, MPI_FLOAT, i, 0, MPI_COMM_WORLD, &stat);
 			minimum[i] = min; 
 		}
 		
 		min = FLT_MAX;
 		min_x = 0;
-		// Find the global minimum
+		// Find the global minimum.
 		for (int i = 0; i < nprocs; i++) {
 			float x = minimum[i];
 			float y = f(x); 
@@ -126,7 +130,7 @@ int main(int argc, char *argv[]) {
 		MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);	
 	}
 
-	// Free memory and clean up
+	// Free memory and clean up.
 	if (rank == 0) delete[] minimum;
 	MPI_Finalize();
 	return 0;
