@@ -40,7 +40,7 @@ void *eval_func(void* rank) {
 
 	omp_set_dynamic(0);
 	omp_set_num_threads(nthreads);
-	#pragma omp parallel for shared(f_min, local_min) private(min, random)
+	#pragma omp parallel for shared(f_min, local_min) private(x, min, random)
 	// Generate a random floating point number in the subdivided range.
 	for (x = 0; x < NUM_ITER; x++) {
 		random = (rand() * (end - start) / RAND_MAX) + start;
