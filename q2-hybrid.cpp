@@ -31,28 +31,31 @@ float f(float x) {
 void *eval_func(void* rank) {
 	// Segment the range based on rank.
 	int ID = *((int *) rank);
-	float start = ((long) ID) * (end_x + start_x) / nprocs; 
-	float end = start + (end_x + start_x) / nprocs; 
+	float start = (ID * ((end_x - start_x) / nprocs)) + start_x; 
+	float end = start + ((end_x - start_x) / nprocs); 
 	local_min = FLT_MAX;
 	float f_min = FLT_MAX;
-	float random;
+	float random, min;
 	int x;
 
 	omp_set_dynamic(0);
 	omp_set_num_threads(nthreads);
-	#pragma omp parallel for private(x)
+	#pragma omp parallel for shared(f_min, local_min) private(min, random)
 	// Generate a random floating point number in the subdivided range.
 	for (x = 0; x < NUM_ITER; x++) {
 		random = (rand() * (end - start) / RAND_MAX) + start;
-		float min = f(random);
-		if (min < f_min) {
-			f_min = min;
-			local_min = random;
+		min = f(random);
+		#pragma omp critical // Getting wrong values 2+ threads
+		{
+			if (min < f_min) {
+				f_min = min;
+				local_min = random;
+			}
 		}
 	}
 
 	// Send the value that minimizes the function back to the main process.
-	if (rank != 0) MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+	if (ID != 0) MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
 	else minimum[0] = local_min;
 }
 
@@ -70,7 +73,7 @@ double myclock() {
 int main(int argc, char *argv[]) {
 	int rank;
 	double tstart, ttotal;
-	nprocs = 2; //atoi(getenv("NSLOTS"));
+	nprocs = atoi(getenv("NSLOTS"));
 
 	// Data validation.
 	if (argc < 3) {
@@ -116,7 +119,7 @@ int main(int argc, char *argv[]) {
 		}
 		
 		min = FLT_MAX;
-		min_x = 0;
+		min_x = FLT_MAX;
 		// Find the global minimum.
 		for (int i = 0; i < nprocs; i++) {
 			float x = minimum[i];
@@ -125,9 +128,6 @@ int main(int argc, char *argv[]) {
 		}
 		ttotal = myclock() - tstart;
 		printf("DATA, %f, %d, %d, %lf\n", min_x, nprocs, nthreads, ttotal);	
-	}
-	else {
-		MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);	
 	}
 
 	// Free memory and clean up.
