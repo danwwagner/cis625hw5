@@ -30,24 +30,28 @@ float f(float x) {
 void *eval_func(void* rank) {
 	// Segment the range based on rank.
 	int ID = *((int *) rank);
-	float start = ((long) ID) * (end_x + start_x) / nprocs; 
-	float end = start + (end_x + start_x) / nprocs; 
+	float start = (ID * ((end_x - start_x) / nprocs)) + start_x; 
+	float end = start + ((end_x - start_x) / nprocs); 
 	local_min = FLT_MAX;
 	float f_min = FLT_MAX;
-	float random;
-
+	float random, min;
+	printf("Rank %d going from %f to %f\n", ID, start, end);
 	// Generate a random floating point number in the subdivided range.
 	for (int x = 0; x < NUM_ITER; x++) {
 		random = (rand() * (end - start) / RAND_MAX) + start;
-		float min = f(random);
+		min = f(random);
 		if (min < f_min) {
 			f_min = min;
 			local_min = random;
 		}
 	}
+	printf("local min from rank %d: %f\n", ID, local_min);
 	// Send the value that minimizes the function back to the main process.
-	if (rank != 0) MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
-	else minimum[0] = local_min;
+	if (ID != 0) {
+		printf("Rank %d sending local_min %f\n", ID, local_min);
+		MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+	}
+	else { printf("Rank 0 storing local_min %f\n", local_min); minimum[0] = local_min; }
 }
 
 // Used to compute the amount of time the program takes to run.
@@ -64,14 +68,14 @@ double myclock() {
 int main(int argc, char *argv[]) {
 	int rank;
 	double tstart, ttotal;
-	nprocs = 2; //atoi(getenv("NSLOTS"));
+	nprocs = atoi(getenv("NSLOTS"));
 
 	// Data validation.
-	if (argc != 3) {
+	if (argc < 3) {
 		std::cout << "Please enter the start and end points." << std::endl;
 		return -1;
 	}
-	
+
 	// Initialize the MPI processes.
 	int rc = MPI_Init(&argc, &argv);
 	if (rc != MPI_SUCCESS) {
@@ -81,6 +85,7 @@ int main(int argc, char *argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 		
+	nthreads = atoi(argv[3]);	
 	if (rank == 0) {
 		minimum = new float[nprocs];
 		// Grab the starting and ending values of x.	
@@ -104,23 +109,24 @@ int main(int argc, char *argv[]) {
 		// Pass back the values to prevent idle processes. 
 		for (int i = 1; i < nprocs; i++) {
 			MPI_Recv(&min, 1, MPI_FLOAT, i, 0, MPI_COMM_WORLD, &stat);
+			printf("Received min %f from rank %d\n", min, i);
 			minimum[i] = min; 
 		}
 		
 		min = FLT_MAX;
-		min_x = 0;
+		min_x = FLT_MAX;
+		printf("local_min: %f\n", minimum[0]);
 		// Find the global minimum.
 		for (int i = 0; i < nprocs; i++) {
 			float x = minimum[i];
-			float y = f(x); 
+			float y = f(x);
+			printf("x, y: %f, %f\n", x, y);
 			if (y < min) { min = y; min_x = x;}	
 		}
 		ttotal = myclock() - tstart;
 		printf("DATA, %f, %d, %d, %lf\n", min_x, nprocs, nthreads, ttotal);	
 	}
-	else {
-		MPI_Send(&local_min, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);	
-	}
+
 	// Free memory and clean up. 
 	if (rank == 0) delete[] minimum;
 	MPI_Finalize();
