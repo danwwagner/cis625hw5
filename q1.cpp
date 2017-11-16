@@ -6,7 +6,7 @@
 
 int num_threads = 1;
 
-double f(int x, int y)
+inline double f(int x, int y)
 {
 	return -std::cos(x) * std::sin(y) * std::exp(-((x - M_PI)*(x - M_PI) + (y - M_PI)*(y - M_PI)));	
 }
@@ -14,8 +14,10 @@ double f(int x, int y)
 double do_work(int rank, int x_start, int x_end, int y_start, int y_end)
 {
 	int iters = x_end - x_start;
-	int loop_start = x_start + (rank * (iters / num_threads) + (iters % num_threads));
-	int loop_end = x_start + (loop_start + ((iters / num_threads) + (iters % num_threads)));
+	int loop_start = (rank * (iters / num_threads));
+	int loop_end = loop_start + (iters / num_threads);
+	loop_start += x_start;
+	loop_end += x_start;
 
 	if (rank == num_threads-1) loop_end = x_end;
 
@@ -33,14 +35,15 @@ double do_work(int rank, int x_start, int x_end, int y_start, int y_end)
 	return result;
 }
 
-double myclock() {
-   static time_t t_start = 0;  // Save and subtract off each time
+double myclock() 
+{
+	static time_t t_start = 0;  // Save and subtract off each time
 
-   struct timespec ts;
-   clock_gettime(CLOCK_REALTIME, &ts);
-   if( t_start == 0 ) t_start = ts.tv_sec;
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	if( t_start == 0 ) t_start = ts.tv_sec;
 
-   return (double) (ts.tv_sec - t_start) + ts.tv_nsec * 1.0e-9;
+	return (double) (ts.tv_sec - t_start) + ts.tv_nsec * 1.0e-9;
 }
 
 int main(int argc, char** argv)
