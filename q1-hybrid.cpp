@@ -1,8 +1,10 @@
 #include <iostream>
 #include <cmath>
 #include <mpi.h>
+#include <omp.h>
 
 #define R_SZ 0.00001
+#define NUM_OMP_THREADS 2
 
 int num_threads = 1;
 
@@ -24,6 +26,7 @@ double do_work(int rank, int x_start, int x_end, int y_start, int y_end)
 	std::cout << "rank: " << rank << " start: " << loop_start << " end: " << loop_end << std::endl;	
 
 	double result = 0.0;
+#pragma omp parallel for default(shared) reduction(+: result)
 	for (int i = loop_start; i < loop_end; ++i)
 	{
 		for (int j = y_start; j < y_end; ++j)
@@ -71,6 +74,7 @@ int main(int argc, char** argv)
 	
 	MPI_Comm_size(MPI_COMM_WORLD,&num_threads);
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+	omp_set_num_threads(NUM_OMP_THREADS);
 
 	tstart = myclock();	
 	tstart = myclock();	
