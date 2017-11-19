@@ -4,7 +4,7 @@
 #include <omp.h>
 
 #define R_SZ 0.00001
-#define NUM_OMP_THREADS 2
+#define NUM_OMP_THREADS 4
 
 int num_threads = 1;
 
@@ -26,10 +26,11 @@ double do_work(int rank, int x_start, int x_end, int y_start, int y_end)
 	std::cout << "rank: " << rank << " start: " << loop_start << " end: " << loop_end << std::endl;	
 
 	double result = 0.0;
-#pragma omp parallel for default(shared) reduction(+: result)
-	for (int i = loop_start; i < loop_end; ++i)
+	int i,j;
+#pragma omp parallel for private(i,j) reduction(+: result)
+	for (i = loop_start; i < loop_end; ++i)
 	{
-		for (int j = y_start; j < y_end; ++j)
+		for (j = y_start; j < y_end; ++j)
 		{
 			result += R_SZ*R_SZ*f(x_start+i*R_SZ, y_start+j*R_SZ);	
 		}

@@ -6,7 +6,7 @@
 
 #define R_MIN 0
 #define R_MAX 1000
-#define N 100000
+#define N 1000000000
 
 int num_threads = 1;
 

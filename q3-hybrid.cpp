@@ -8,7 +8,7 @@
 #define R_MIN 0
 #define R_MAX 1000
 #define N 1000000000
-#define NUM_OMP_THREADS 2
+#define NUM_OMP_THREADS 4
 
 int num_threads = 1;
 
@@ -32,8 +32,9 @@ std::pair<std::vector<int>, int64_t> generate_sample_space(int rank)
 	}	
 
 	int64_t sum = 0;
-#pragma omp parallel for default(shared) reduction(+: sum)
-	for (int i = 0; i < n_per_proc; ++i)
+	int i;
+#pragma omp parallel for private(i) reduction(+: sum)
+	for (i = 0; i < n_per_proc; ++i)
 	{
 		sum += sample_space[i];
 	}	
@@ -48,9 +49,10 @@ int64_t find_sum_squares(std::pair<std::vector<int>, int64_t> sample_space_pair)
 	auto sample_space = sample_space_pair.first;
 	auto mean = sample_space_pair.second;
 	auto n_per_proc = sample_space.size();
-
-#pragma omp parallel for default(shared) reduction(+: sum_squares)
-	for (int i = 0; i < n_per_proc; ++i)
+	
+	int i;
+#pragma omp parallel for private(i) reduction(+: sum_squares)
+	for (i = 0; i < n_per_proc; ++i)
 	{
 		sum_squares += (sample_space[i] - mean)*(sample_space[i] - mean);
 	}
