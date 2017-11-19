@@ -932,4 +932,48 @@ int main(int argc, char** argv)
 	return 0;
 }
 \end{lstlisting}
+\newpage
+
+\subsection*{Appendix G - mass\_qsub.sh}
+\begin{lstlisting}
+#!/bin/bash
+#$ -l killable
+#$ -j y
+#$ -l mem=1G
+#$ -m abe
+#$ -M danwagner@ksu.edu
+
+for i in {1}
+	do
+		qsub -pe mpi-fill $1 -q \*@@elves mpi_qsub.sh $2 $3 8
+done
+\end{lstlisting}
+
+\subsection*{Appendix H - mpi\_qsub.sh}
+\begin{lstlisting}
+#!/bin/bash
+#$ -l killable
+#$ -cwd
+#$ -j y
+#$ -l h_rt=01:00:00
+#$ -l mem=1G
+#$ -N Q2_MPI_8
+#$ -m as
+#$ -M danwagner@ksu.edu
+
+mpirun ./q2-hybrid $1 $2 $3
+\end{lstlisting}
+\subsection*{Appendix I - thread\_change.sh}
+\begin{lstlisting}
+#!/bin/bash
+# Varying the number of processes, up to 16
+
+./mass_qsub.sh 1 $1 $2
+./mass_qsub.sh 2 $1 $2 
+./mass_qsub.sh 4 $1 $2 
+./mass_qsub.sh 8 $1 $2 
+./mass_qsub.sh 16 $1 $2
+\end{lstlisting}
+
+
 \end{document}
